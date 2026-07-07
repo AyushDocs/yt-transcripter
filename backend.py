@@ -33,24 +33,26 @@ def extract_video_id(url: str) -> str | None:
     return None
 
 
-def parse_vtt_to_text(vtt_content: str) -> str:
+def parse_vtt(vtt_content: str) -> tuple[str, str]:
     lines = vtt_content.split('\n')
-    output = []
+    ts_lines = []
     text_lines = []
     current_ts = ''
+    current_text = []
     for line in lines:
         stripped = line.strip()
         if stripped == '':
-            if text_lines and current_ts:
-                raw = ' '.join(text_lines)
+            if current_text and current_ts:
+                raw = ' '.join(current_text)
                 raw = re.sub(r'<[^>]+>', '', raw)
                 raw = re.sub(r'\s+', ' ', raw).strip()
                 if raw:
                     ts = current_ts.rstrip('0').rstrip('.')
                     if ts.startswith('00:'):
                         ts = ts[3:]
-                    output.append(f'{ts}  {raw}')
-                text_lines = []
+                    ts_lines.append(f'{ts}  {raw}')
+                    text_lines.append(raw)
+                current_text = []
                 current_ts = ''
         elif '-->' in stripped:
             current_ts = stripped.split(' --> ')[0]
@@ -59,17 +61,18 @@ def parse_vtt_to_text(vtt_content: str) -> str:
         elif stripped.startswith('Kind:') or stripped.startswith('Language:'):
             continue
         else:
-            text_lines.append(stripped)
-    if text_lines and current_ts:
-        raw = ' '.join(text_lines)
+            current_text.append(stripped)
+    if current_text and current_ts:
+        raw = ' '.join(current_text)
         raw = re.sub(r'<[^>]+>', '', raw)
         raw = re.sub(r'\s+', ' ', raw).strip()
         if raw:
             ts = current_ts.rstrip('0').rstrip('.')
             if ts.startswith('00:'):
                 ts = ts[3:]
-            output.append(f'{ts}  {raw}')
-    return '\n'.join(output)
+            ts_lines.append(f'{ts}  {raw}')
+            text_lines.append(raw)
+    return '\n'.join(ts_lines), '\n'.join(text_lines)
 
 
 @app.route('/transcript', methods=['POST'])
@@ -112,11 +115,12 @@ def get_transcript():
     if 'en' in rs:
         sub_path = rs['en'].get('filepath')
 
+    transcript_ts = ''
     transcript = ''
     if sub_path and os.path.exists(sub_path):
         with open(sub_path, encoding='utf-8') as f:
             vtt = f.read()
-        transcript = parse_vtt_to_text(vtt)
+        transcript_ts, transcript = parse_vtt(vtt)
         os.unlink(sub_path)
 
     try:
@@ -132,6 +136,7 @@ def get_transcript():
         'duration': duration,
         'video_id': video_id,
         'transcript': transcript,
+        'transcript_ts': transcript_ts,
     })
 
 

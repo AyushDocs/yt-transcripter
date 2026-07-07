@@ -206,6 +206,8 @@ const toggleBtn = document.getElementById('toggleTimestampsBtn');
 const wordCount = document.getElementById('wordCount');
 
 let currentTranscript = '';
+let currentTranscriptTs = '';
+let showingTimestamps = false;
 
 function fmtDuration(sec) {
   const h = Math.floor(sec / 3600);
@@ -245,6 +247,9 @@ async function fetchTranscript(url) {
     videoTitle.textContent = data.title;
     durationBadge.textContent = fmtDuration(data.duration);
     currentTranscript = data.transcript;
+    currentTranscriptTs = data.transcript_ts || data.transcript;
+    showingTimestamps = false;
+    toggleBtn.textContent = 'Show Timestamps';
     output.textContent = currentTranscript;
     wordCount.textContent = `${currentTranscript.split(/\s+/).filter(Boolean).length} words`;
     resultEl.classList.add('visible');
@@ -289,20 +294,9 @@ copyBtn.addEventListener('click', async () => {
 });
 
 toggleBtn.addEventListener('click', () => {
-  if (toggleBtn.textContent === 'Show Timestamps') {
-    output.textContent = currentTranscript;
-    toggleBtn.textContent = 'Hide Timestamps';
-  } else {
-    const lines = currentTranscript.split('\n');
-    const textOnly = lines
-      .map(l => l.replace(/^\d{1,2}:\d{2}(:\d{2})?[.,]\d{3}\s*-->\s*\d{1,2}:\d{2}(:\d{2})?[.,]\d{3}.*$/, '').trim())
-      .filter(l => l && !l.startsWith('WEBVTT') && !l.startsWith('Kind:') && !l.startsWith('Language:'))
-      .map(l => l.replace(/<[^>]+>/g, '').trim())
-      .filter(Boolean)
-      .join(' ');
-    output.textContent = textOnly;
-    toggleBtn.textContent = 'Show Timestamps';
-  }
+  showingTimestamps = !showingTimestamps;
+  output.textContent = showingTimestamps ? currentTranscriptTs : currentTranscript;
+  toggleBtn.textContent = showingTimestamps ? 'Hide Timestamps' : 'Show Timestamps';
 });
 </script>
 </body>
