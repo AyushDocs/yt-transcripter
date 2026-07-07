@@ -1,7 +1,8 @@
 import re
 import os
+import pathlib
 import tempfile
-from urllib.parse import urlparse, parse_qs
+
 
 import yt_dlp
 from flask import Flask, request, jsonify
@@ -9,6 +10,8 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def extract_video_id(url: str) -> str | None:
@@ -133,12 +136,8 @@ def get_transcript():
 
 @app.route('/')
 def index():
-    return app.send_static_file('index.html')
+    return pathlib.Path(BASE_DIR, 'index.html').read_text(encoding='utf-8')
 
 
 if __name__ == '__main__':
-    import sys, os
-    # Serve index.html from the directory containing this script
-    app.static_folder = os.path.dirname(os.path.abspath(__file__))
-    app.static_url_path = ''
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
