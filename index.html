@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Transcripter</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: #0f0f0f;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .container {
+    width: 100%;
+    max-width: 800px;
+  }
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: #fff;
+  }
+  .subtitle {
+    color: #aaa;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+  .input-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .input-row input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-row input:focus { border-color: #3ea6ff; }
+  .input-row input::placeholder { color: #666; }
+  .input-row button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    background: #3ea6ff;
+    color: #000;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .input-row button:hover { background: #65b8ff; }
+  .input-row button:disabled { background: #555; color: #999; cursor: not-allowed; }
+
+  .examples {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #666;
+  }
+  .examples span {
+    cursor: pointer;
+    color: #3ea6ff;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .examples span:hover { color: #65b8ff; }
+
+  #status {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: none;
+  }
+  #status.error { display: block; background: #2d1b1b; color: #ff6b6b; border: 1px solid #4a2a2a; }
+  #status.info { display: block; background: #1a2d1b; color: #6bff6b; border: 1px solid #2a4a2a; }
+
+  #result {
+    margin-top: 1.5rem;
+    display: none;
+  }
+  #result.visible { display: block; }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .meta h2 {
+    font-size: 1.15rem;
+    color: #fff;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .meta .badge {
+    font-size: 0.75rem;
+    color: #aaa;
+    background: #1a1a1a;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .toolbar button {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: #1a1a1a;
+    color: #ccc;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .toolbar button:hover { background: #2a2a2a; border-color: #555; }
+
+  #output {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 70vh;
+    overflow-y: auto;
+    color: #d0d0d0;
+  }
+  #output:focus { outline: none; }
+
+  .word-count {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #666;
+    text-align: right;
+  }
+
+  @media (max-width: 500px) {
+    body { padding: 1rem 0.75rem; }
+    .input-row { flex-direction: column; }
+    .meta { flex-direction: column; align-items: flex-start; }
+    .meta h2 { white-space: normal; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>YT Transcripter</h1>
+  <p class="subtitle">Paste a YouTube link or video ID to get the transcript</p>
+
+  <div class="input-row">
+    <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=... or just video ID" autofocus>
+    <button id="fetchBtn">Get Transcript</button>
+  </div>
+  <div class="examples">
+    Try: <span data-url="https://www.youtube.com/watch?v=qz0aGYrrlhU">HTML Crash Course</span>
+    &middot; <span data-url="dQw4w9WgXcQ">Rick Astley</span>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="result">
+    <div class="meta">
+      <h2 id="videoTitle"></h2>
+      <span class="badge" id="durationBadge"></span>
+    </div>
+    <div class="toolbar">
+      <button id="copyBtn">Copy</button>
+      <button id="toggleTimestampsBtn">Show Timestamps</button>
+    </div>
+    <div id="output" contenteditable="false"></div>
+    <div class="word-count" id="wordCount"></div>
+  </div>
+</div>
+
+<script>
+const urlInput = document.getElementById('urlInput');
+const fetchBtn = document.getElementById('fetchBtn');
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+const videoTitle = document.getElementById('videoTitle');
+const durationBadge = document.getElementById('durationBadge');
+const output = document.getElementById('output');
+const copyBtn = document.getElementById('copyBtn');
+const toggleBtn = document.getElementById('toggleTimestampsBtn');
+const wordCount = document.getElementById('wordCount');
+
+let currentTranscript = '';
+
+function fmtDuration(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  return `${m}m ${s}s`;
+}
+
+function setStatus(msg, type) {
+  statusEl.textContent = msg;
+  statusEl.className = type;
+}
+
+function showError(msg) {
+  setStatus(msg, 'error');
+  resultEl.classList.remove('visible');
+}
+
+async function fetchTranscript(url) {
+  fetchBtn.disabled = true;
+  fetchBtn.textContent = 'Loading...';
+  resultEl.classList.remove('visible');
+  setStatus('Fetching transcript...', 'info');
+
+  try {
+    const res = await fetch('/transcript', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showError(data.error || 'Request failed');
+      return;
+    }
+    videoTitle.textContent = data.title;
+    durationBadge.textContent = fmtDuration(data.duration);
+    currentTranscript = data.transcript;
+    output.textContent = currentTranscript;
+    wordCount.textContent = `${currentTranscript.split(/\s+/).filter(Boolean).length} words`;
+    resultEl.classList.add('visible');
+    statusEl.className = '';
+    statusEl.style.display = 'none';
+  } catch (err) {
+    showError('Network error. Is the server running?');
+  } finally {
+    fetchBtn.disabled = false;
+    fetchBtn.textContent = 'Get Transcript';
+  }
+}
+
+fetchBtn.addEventListener('click', () => {
+  const val = urlInput.value.trim();
+  if (!val) return;
+  fetchTranscript(val);
+});
+
+urlInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') fetchBtn.click();
+});
+
+document.querySelectorAll('.examples span').forEach(el => {
+  el.addEventListener('click', () => {
+    urlInput.value = el.dataset.url;
+    fetchTranscript(el.dataset.url);
+  });
+});
+
+copyBtn.addEventListener('click', async () => {
+  const text = output.textContent;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    copyBtn.textContent = 'Copied!';
+    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+  } catch {
+    copyBtn.textContent = 'Failed';
+    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+  }
+});
+
+toggleBtn.addEventListener('click', () => {
+  if (toggleBtn.textContent === 'Show Timestamps') {
+    output.textContent = currentTranscript;
+    toggleBtn.textContent = 'Hide Timestamps';
+  } else {
+    const lines = currentTranscript.split('\n');
+    const textOnly = lines
+      .map(l => l.replace(/^\d{1,2}:\d{2}(:\d{2})?[.,]\d{3}\s*-->\s*\d{1,2}:\d{2}(:\d{2})?[.,]\d{3}.*$/, '').trim())
+      .filter(l => l && !l.startsWith('WEBVTT') && !l.startsWith('Kind:') && !l.startsWith('Language:'))
+      .map(l => l.replace(/<[^>]+>/g, '').trim())
+      .filter(Boolean)
+      .join(' ');
+    output.textContent = textOnly;
+    toggleBtn.textContent = 'Show Timestamps';
+  }
+});
+</script>
+</body>
+</html>
