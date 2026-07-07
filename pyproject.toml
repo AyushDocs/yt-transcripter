@@ -1,2 +1,11 @@
+[project]
+name = "yt-transcripter"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0",
+    "flask-cors>=5.0",
+    "yt-dlp>=2024.0",
+]
+
 [tool.vercel]
 entrypoint = "backend:app"
