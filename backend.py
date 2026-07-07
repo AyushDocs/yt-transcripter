@@ -95,6 +95,7 @@ def get_transcript():
         'outtmpl': outtmpl,
         'quiet': True,
         'no_warnings': True,
+        'extractor_args': {'youtube': {'player_client': ['android']}},
     }
 
     try:
